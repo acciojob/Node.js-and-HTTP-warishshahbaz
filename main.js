@@ -1,33 +1,44 @@
 const http = require("http");
+const url = require("url");
+const querystring = require("querystring");
 
 const server = http.createServer((req, res) => {
-  // Extract request details
-  const { method, url, headers } = req;
+  const parsedUrl = url.parse(req.url, true);
+  const method = req.method;
+  const path = parsedUrl.pathname;
+  const query = parsedUrl.query;
 
-  // Create response object
-  const responseObject = {
-    method,
-    url,
-    headers,
-  };
+  let body = "";
+  req.on("data", (chunk) => {
+    body += chunk.toString();
+  });
 
-  // Set response headers
-  res.setHeader("Content-Type", "application/json");
+  req.on("end", () => {
+    const parsedBody = querystring.parse(body);
 
-  // Handle different HTTP methods
-  if (req.method === "GET" || req.method === "POST") {
-    // Send response with request details
-    res.statusCode = 200;
-    res.end(JSON.stringify(responseObject));
-  } else {
-    // Send 405 Method Not Allowed for unsupported methods
-    res.statusCode = 405;
-    res.end(JSON.stringify({ error: "Method Not Allowed" }));
-  }
+    const responseObj = {
+      method,
+      path,
+      query,
+      body: parsedBody,
+    };
+
+    if (method !== "POST") {
+      delete responseObj.body;
+    }
+
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(responseObj));
+  });
 });
 
-server.listen(3000, () => {
-  console.log("Server is listening on port 3000");
-});
+/* we just simply export the server object, we donot start the server itself. isme just simplify krre hai */
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 module.exports = { server };
